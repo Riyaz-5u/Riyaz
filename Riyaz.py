@@ -991,7 +991,7 @@ def export_users(message):
 # Import Users
 @bot.message_handler(func=lambda message: message.text == "📥 Import Users" and str(message.chat.id) == ADMIN_ID)
 def import_users(message):
-    bot.reply_to(message, "📤 Please upload a JSON file containing user data (user_id and chat_id).")
+    bot.reply_to(message, "📤 Please upload a JSON file containing user/group data (user_id or chat_id).")
     bot.register_next_step_handler(message, process_import)
 
 
@@ -1014,52 +1014,61 @@ def process_import(message):
 
         # Load JSON data
         with open(filename, "r") as file:
-            users = json.load(file)
+            records = json.load(file)
 
-        # Existing user_ids and chat_ids to avoid duplicates
-        existing_user_ids = set(u["user_id"] for u in users_collection.find({}, {"user_id": 1}))
-        existing_chat_ids = set(u.get("chat_id") for u in users_collection.find({}, {"chat_id": 1}))
+        # Prepare sets for duplicates
+        existing_user_ids = set()
+        existing_chat_ids = set()
+
+        # Load existing from DB
+        for u in users_collection.find({}, {"user_id": 1, "chat_id": 1}):
+            if "user_id" in u:
+                existing_user_ids.add(u["user_id"])
+            if "chat_id" in u:
+                existing_chat_ids.add(u["chat_id"])
 
         imported_count = 0
         skipped_count = 0
 
-        for user in users:
-            user_id = user.get("user_id")
-            chat_id = user.get("chat_id")
+        for entry in records:
+            uid = entry.get("user_id")
+            cid = entry.get("chat_id")
 
-            # skip if missing fields
-            if not user_id or not chat_id:
-                skipped_count += 1
-                continue
+            if uid:  # If user_id present
+                if uid not in existing_user_ids:
+                    users_collection.insert_one({"user_id": uid})
+                    existing_user_ids.add(uid)
+                    imported_count += 1
+                else:
+                    skipped_count += 1
 
-            # skip duplicates
-            if user_id in existing_user_ids or chat_id in existing_chat_ids:
-                skipped_count += 1
-                continue
+            elif cid:  # If chat_id present
+                if cid not in existing_chat_ids:
+                    users_collection.insert_one({"chat_id": cid})
+                    existing_chat_ids.add(cid)
+                    imported_count += 1
+                else:
+                    skipped_count += 1
+            else:
+                skipped_count += 1  # No valid ID
 
-            users_collection.insert_one({
-                "user_id": user_id,
-                "chat_id": chat_id
-            })
-            imported_count += 1
-            existing_user_ids.add(user_id)
-            existing_chat_ids.add(chat_id)
-
-        # Clean up temp file
         os.remove(filename)
 
-        # Stylish result output
+        # Stylish output
         from datetime import datetime
         import pytz
         india = pytz.timezone("Asia/Kolkata")
         current_time = datetime.now(india).strftime("%I:%M:%S %p")
+
+        total_users = users_collection.count_documents({})
 
         result_text = f"""
 <b>━━━━━━━━━━━━━━━━━━
 [⌬] 𝗜𝗺𝗽𝗼𝗿𝘁 𝗥𝗲𝗽𝗼𝗿𝘁 [⌬]
 ━━━━━━━━━━━━━━━━━━</b>
 <b>[✢] 𝗜𝗺𝗽𝗼𝗿𝘁𝗲𝗱 →</b> {imported_count}
-<b>[✢] 𝗦𝗸𝗶𝗽𝗽𝗲𝗱 (duplicates/missing) →</b> {skipped_count}
+<b>[✢] 𝗦𝗸𝗶𝗽𝗽𝗲𝗱 (duplicates/invalid) →</b> {skipped_count}
+<b>[✢] 𝗧𝗼𝘁𝗮𝗹 𝗶𝗻 𝗗𝗕 →</b> {total_users}
 <b>[✢] 𝗧𝗶𝗺𝗲 (IST) →</b> {current_time}
 <b>━━━━━━━━━━━━━━━━━━</b>
 """
