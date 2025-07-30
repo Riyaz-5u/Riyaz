@@ -2,6 +2,7 @@ import os
 import re
 import json
 import psutil
+import pytz
 import time
 import telebot
 import requests
@@ -1175,17 +1176,18 @@ def user_stats(message):
     hours = (uptime_seconds % (24 * 3600)) // 3600
     minutes = (uptime_seconds % 3600) // 60
 
-    # Current time
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # Current India time (IST)
+    india = pytz.timezone("Asia/Kolkata")
+    current_time = datetime.now(india).strftime("%Y-%m-%d %I:%M:%S %p")
 
     # Stylish HTML output
     text = f"""
 <b>━━━━━━━━━━━━━━━━━━
 [⌬] 𝗩𝗣𝗦 𝗦𝗧𝗔𝗧𝗨𝗦 [⌬]
 ━━━━━━━━━━━━━━━━━━</b>
-<b>[✢] 𝗨𝘀𝗲𝗿𝘀 →</b> {total_users}
-<b>[✢] 𝗨𝗽𝘁𝗶𝗺𝗲 →</b> {days}d {hours}h {minutes}m
-<b>[✢] 𝗧𝗶𝗺𝗲 →</b> {current_time}
+<b>[✢] 𝐔𝐬𝐞𝐫𝐬 →</b> {total_users}
+<b>[✦] 𝐔𝐩𝐭𝐢𝐦𝐞 →</b> {days}d {hours}h {minutes}m
+<b>[✢] 𝐓𝐢𝐦𝐞 →</b> {current_time}
 <b>━━━━━━━━━━━━━━━━━━</b>
     """
 
