@@ -827,6 +827,9 @@ def process_broadcast_confirmation(message):
     if message.text.strip().lower() in ["✅ yes", "yes"]:
         message_to_send = pending_broadcast.get(message.chat.id)
         if message_to_send:
+            
+            start_time = datetime.now()
+
             success_count = 0
             failed_count = 0
             users = users_collection.find({})
@@ -852,11 +855,32 @@ def process_broadcast_confirmation(message):
                     failed_count += 1
                     print(f"Failed to send to {user['user_id']}: {e}")
 
-            bot.send_message(message.chat.id, f"✅ Broadcast completed.\n\n"
-                                              f"• Successful: {success_count}\n"
-                                              f"• Failed: {failed_count}")
+            # End time
+            end_time = datetime.now()
+            duration = (end_time - start_time).total_seconds()
+
+            # India time
+            india = pytz.timezone("Asia/Kolkata")
+            start_ist = start_time.astimezone(india).strftime("%I:%M:%S %p")
+            
+
+            # Stylish output
+            result_text = f"""
+<b>━━━━━━━━━━━━━━━━━━
+[⌬] 𝗕𝗿𝗼𝗮𝗱𝗰𝗮𝘀𝘁 𝗦𝘁𝗮𝘁𝘂𝘀 [⌬]
+━━━━━━━━━━━━━━━━━━</b>
+<b>[✦] 𝐓𝐨𝐭𝐚𝐥 𝐔𝐬𝐞𝐫𝐬 →</b> {success_count + failed_count}
+<b>[✢] 𝐒𝐮𝐜𝐜𝐞𝐬𝐬 →</b> {success_count}
+<b>[✦] 𝐅𝐚𝐢𝐥𝐞𝐝 →</b> {failed_count}
+<b>[✢] 𝐓𝐢𝐦𝐞 →</b> {start_ist}
+<b>[✦] 𝐓𝐨𝐨𝐤 →</b> {duration:.2f} sec
+<b>━━━━━━━━━━━━━━━━━━</b>
+"""
+            bot.send_message(message.chat.id, result_text, parse_mode="HTML")
+
         else:
             bot.send_message(message.chat.id, "No message to broadcast.")
+
         start_command(message)
 
     else:
@@ -897,8 +921,11 @@ def process_forward_confirmation(message):
         if not data:
             bot.send_message(message.chat.id, "No message found to broadcast.")
             return
+        
+        start_time = datetime.now()
 
-        success, failed = 0, 0
+        success_count = 0
+        failed_count = 0
         users = users_collection.find({})
         for user in users:
             try:
@@ -907,14 +934,33 @@ def process_forward_confirmation(message):
                     from_chat_id=data['from_chat_id'],
                     message_id=data['message_id']
                 )
-                success += 1
+                success_count += 1
             except Exception as e:
                 print(f"Failed to send to {user['user_id']}: {e}")
-                failed += 1
+                failed_count += 1
 
-        bot.send_message(message.chat.id, f"✅ Broadcast completed!\n\n"
-                                          f"• Successful: {success}\n"
-                                          f"• Failed: {failed}")
+        # End time and duration
+        end_time = datetime.now()
+        duration = (end_time - start_time).total_seconds()
+
+        # India time
+        india = pytz.timezone("Asia/Kolkata")
+        start_ist = start_time.astimezone(india).strftime("%I:%M:%S %p")
+
+        # Stylish output
+        result_text = f"""
+<b>━━━━━━━━━━━━━━━━━━
+[⌬] 𝗕𝗿𝗼𝗮𝗱𝗰𝗮𝘀𝘁 𝗦𝘁𝗮𝘁𝘂𝘀 [⌬]
+━━━━━━━━━━━━━━━━━━</b>
+<b>[✦] 𝐓𝐨𝐭𝐚𝐥 𝐔𝐬𝐞𝐫𝐬 →</b> {success_count + failed_count}
+<b>[✢] 𝐒𝐮𝐜𝐜𝐞𝐬𝐬 →</b> {success_count}
+<b>[✦] 𝐅𝐚𝐢𝐥𝐞𝐝 →</b> {failed_count}
+<b>[✢] 𝐓𝐢𝐦𝐞 →</b> {start_ist}
+<b>[✦] 𝐓𝐨𝐨𝐤 →</b> {duration:.2f} sec
+<b>━━━━━━━━━━━━━━━━━━</b>
+"""
+        bot.send_message(message.chat.id, result_text, parse_mode="HTML")
+
         start_command(message)
 
     else:
@@ -945,57 +991,84 @@ def export_users(message):
 # Import Users
 @bot.message_handler(func=lambda message: message.text == "📥 Import Users" and str(message.chat.id) == ADMIN_ID)
 def import_users(message):
-    bot.reply_to(message, "📤 Please upload a JSON file containing user data.")
+    bot.reply_to(message, "📤 Please upload a JSON file containing user data (user_id and chat_id).")
     bot.register_next_step_handler(message, process_import)
+
 
 def process_import(message):
     if not message.document:
         bot.reply_to(message, "❌ No file uploaded. Please send a valid JSON file.")
         return
 
+    # Download the file
+    file_info = bot.get_file(message.document.file_id)
+    downloaded_file = bot.download_file(file_info.file_path)
+
+    filename = f"users_import_{message.chat.id}.json"
+    with open(filename, "wb") as file:
+        file.write(downloaded_file)
+
     try:
         # Send loading message
         processing_msg = bot.send_message(message.chat.id, "⏳ Processing file, please wait...")
 
-        # Download the file
-        file_info = bot.get_file(message.document.file_id)
-        downloaded_file = bot.download_file(file_info.file_path)
-
-        # Save file
-        filename = f"users_import_{message.chat.id}.json"
-        with open(filename, "wb") as file:
-            file.write(downloaded_file)
-
-        # Load user data
+        # Load JSON data
         with open(filename, "r") as file:
             users = json.load(file)
 
-        # Get all existing user_ids to speed up check
-        existing_ids = set(user["user_id"] for user in users_collection.find({}, {"user_id": 1}))
+        # Existing user_ids and chat_ids to avoid duplicates
+        existing_user_ids = set(u["user_id"] for u in users_collection.find({}, {"user_id": 1}))
+        existing_chat_ids = set(u.get("chat_id") for u in users_collection.find({}, {"chat_id": 1}))
 
         imported_count = 0
+        skipped_count = 0
+
         for user in users:
             user_id = user.get("user_id")
-            if user_id and user_id not in existing_ids:
-                users_collection.insert_one(user)
-                imported_count += 1
+            chat_id = user.get("chat_id")
+
+            # skip if missing fields
+            if not user_id or not chat_id:
+                skipped_count += 1
+                continue
+
+            # skip duplicates
+            if user_id in existing_user_ids or chat_id in existing_chat_ids:
+                skipped_count += 1
+                continue
+
+            users_collection.insert_one({
+                "user_id": user_id,
+                "chat_id": chat_id
+            })
+            imported_count += 1
+            existing_user_ids.add(user_id)
+            existing_chat_ids.add(chat_id)
 
         # Clean up temp file
         os.remove(filename)
 
-        # Edit the "Processing..." message to final result
-        if imported_count > 0:
-            bot.edit_message_text(
-                f"✅ Successfully imported {imported_count} users!",
-                chat_id=message.chat.id,
-                message_id=processing_msg.message_id
-            )
-        else:
-            bot.edit_message_text(
-                "ℹ️ All users already exist. No new users were imported.",
-                chat_id=message.chat.id,
-                message_id=processing_msg.message_id
-            )
+        # Stylish result output
+        from datetime import datetime
+        import pytz
+        india = pytz.timezone("Asia/Kolkata")
+        current_time = datetime.now(india).strftime("%I:%M:%S %p")
+
+        result_text = f"""
+<b>━━━━━━━━━━━━━━━━━━
+[⌬] 𝗜𝗺𝗽𝗼𝗿𝘁 𝗥𝗲𝗽𝗼𝗿𝘁 [⌬]
+━━━━━━━━━━━━━━━━━━</b>
+<b>[✢] 𝗜𝗺𝗽𝗼𝗿𝘁𝗲𝗱 →</b> {imported_count}
+<b>[✢] 𝗦𝗸𝗶𝗽𝗽𝗲𝗱 (duplicates/missing) →</b> {skipped_count}
+<b>[✢] 𝗧𝗶𝗺𝗲 (IST) →</b> {current_time}
+<b>━━━━━━━━━━━━━━━━━━</b>
+"""
+        bot.edit_message_text(
+            result_text,
+            chat_id=message.chat.id,
+            message_id=processing_msg.message_id,
+            parse_mode="HTML"
+        )
 
     except Exception as e:
         bot.send_message(message.chat.id, f"❌ Failed to import user data:\n{e}")
