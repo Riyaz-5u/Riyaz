@@ -1,6 +1,7 @@
 import os
 import re
 import json
+import psutil
 import time
 import telebot
 import requests
@@ -1158,6 +1159,37 @@ def handle_email_command(message):
 
     os.remove(filename)
     bot.delete_message(message.chat.id, processing_msg.message_id)
+
+
+# /user command handler
+@bot.message_handler(commands=['user'])
+def user_stats(message):
+    # Total users from MongoDB
+    total_users = users_collection.count_documents({})
+
+    # VPS uptime
+    boot_time = psutil.boot_time()
+    now = time.time()
+    uptime_seconds = int(now - boot_time)
+    days = uptime_seconds // (24 * 3600)
+    hours = (uptime_seconds % (24 * 3600)) // 3600
+    minutes = (uptime_seconds % 3600) // 60
+
+    # Current time
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Stylish HTML output
+    text = f"""
+<b>━━━━━━━━━━━━━━━━━━
+[⌬] 𝗩𝗣𝗦 𝗦𝗧𝗔𝗧𝗨𝗦 [⌬]
+━━━━━━━━━━━━━━━━━━</b>
+<b>[✢] 𝗨𝘀𝗲𝗿𝘀 →</b> {total_users}
+<b>[✢] 𝗨𝗽𝘁𝗶𝗺𝗲 →</b> {days}d {hours}h {minutes}m
+<b>[✢] 𝗧𝗶𝗺𝗲 →</b> {current_time}
+<b>━━━━━━━━━━━━━━━━━━</b>
+    """
+
+    bot.reply_to(message, text, parse_mode="HTML")
 
 def polling():
     while True:
