@@ -811,28 +811,35 @@ def ask_broadcast_confirmation(message):
     if str(message.chat.id) != ADMIN_ID:
         return
 
-    # Save the message to broadcast
     pending_broadcast[message.chat.id] = message
 
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     markup.add("✅ Yes", "❌ No")
-    bot.send_message(message.chat.id, "Are you sure you want to send this to all users?", reply_markup=markup)
+    bot.send_message(
+        message.chat.id,
+        "Are you sure you want to send this to all users?",
+        reply_markup=markup
+    )
     bot.register_next_step_handler(message, process_broadcast_confirmation)
+
 
 # Process confirmation
 def process_broadcast_confirmation(message):
     if str(message.chat.id) != ADMIN_ID:
         return
 
-    if message.text.strip().lower() in ["✅ yes", "yes"]:
+    text = message.text.strip().lower()
+    remove_keyboard = types.ReplyKeyboardRemove()  # remove buttons after selection
+
+    if text in ["✅ yes", "yes"]:
         message_to_send = pending_broadcast.get(message.chat.id)
         if message_to_send:
-            
-            start_time = datetime.now()
 
+            start_time = datetime.now()
             success_count = 0
             failed_count = 0
             users = users_collection.find({})
+
             for user in users:
                 try:
                     chat_id = user["user_id"]
@@ -859,12 +866,9 @@ def process_broadcast_confirmation(message):
             end_time = datetime.now()
             duration = (end_time - start_time).total_seconds()
 
-            # India time
             india = pytz.timezone("Asia/Kolkata")
             start_ist = start_time.astimezone(india).strftime("%I:%M:%S %p")
-            
 
-            # Stylish output
             result_text = f"""
 <b>━━━━━━━━━━━━━━━━━━
 [⌬] 𝗕𝗿𝗼𝗮𝗱𝗰𝗮𝘀𝘁 𝗦𝘁𝗮𝘁𝘂𝘀 [⌬]
@@ -876,15 +880,20 @@ def process_broadcast_confirmation(message):
 <b>[✦] 𝐓𝐨𝐨𝐤 →</b> {duration:.2f} sec
 <b>━━━━━━━━━━━━━━━━━━</b>
 """
-            bot.send_message(message.chat.id, result_text, parse_mode="HTML")
+            bot.send_message(
+                message.chat.id,
+                result_text,
+                parse_mode="HTML",
+                reply_markup=remove_keyboard
+            )
 
         else:
-            bot.send_message(message.chat.id, "No message to broadcast.")
+            bot.send_message(message.chat.id, "No message to broadcast.", reply_markup=remove_keyboard)
 
         start_command(message)
 
     else:
-        bot.send_message(message.chat.id, "❎ Broadcast cancelled.")
+        bot.send_message(message.chat.id, "❎ Broadcast cancelled.", reply_markup=remove_keyboard)
         start_command(message)
 
 
@@ -911,17 +920,23 @@ def ask_forward_confirmation(message):
 
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, one_time_keyboard=True)
     markup.add("✅ Yes", "❌ No")
-    bot.send_message(message.chat.id, "Are you sure you want to forward this to all users?", reply_markup=markup)
+    bot.send_message(
+        message.chat.id,
+        "Are you sure you want to forward this to all users?",
+        reply_markup=markup
+    )
     bot.register_next_step_handler(message, process_forward_confirmation)
 
 # Process confirmation
 def process_forward_confirmation(message):
+    remove_keyboard = types.ReplyKeyboardRemove()  # remove buttons
+
     if message.text.lower() in ["✅ yes", "yes"]:
         data = pending_forward.get(message.chat.id)
         if not data:
-            bot.send_message(message.chat.id, "No message found to broadcast.")
+            bot.send_message(message.chat.id, "No message found to broadcast.", reply_markup=remove_keyboard)
             return
-        
+
         start_time = datetime.now()
 
         success_count = 0
@@ -959,12 +974,17 @@ def process_forward_confirmation(message):
 <b>[✦] 𝐓𝐨𝐨𝐤 →</b> {duration:.2f} sec
 <b>━━━━━━━━━━━━━━━━━━</b>
 """
-        bot.send_message(message.chat.id, result_text, parse_mode="HTML")
+        bot.send_message(
+            message.chat.id,
+            result_text,
+            parse_mode="HTML",
+            reply_markup=remove_keyboard
+        )
 
         start_command(message)
 
     else:
-        bot.send_message(message.chat.id, "❎ Forward broadcast cancelled.")
+        bot.send_message(message.chat.id, "❎ Forward broadcast cancelled.", reply_markup=remove_keyboard)
         start_command(message)
 
 # Export Users
