@@ -1010,7 +1010,7 @@ def process_import(message):
 
     try:
         # Send loading message
-        processing_msg = bot.send_message(message.chat.id, "⏳ Processing file, please wait...")
+        processing_msg = bot.send_message(message.chat.id, "⏳ Processing...")
 
         # Load JSON data
         with open(filename, "r") as file:
@@ -1055,22 +1055,20 @@ def process_import(message):
         os.remove(filename)
 
         # Stylish output
-        from datetime import datetime
-        import pytz
         india = pytz.timezone("Asia/Kolkata")
         current_time = datetime.now(india).strftime("%I:%M:%S %p")
 
         total_users = users_collection.count_documents({})
 
         result_text = f"""
-<b>━━━━━━━━━━━━━━━━━━
-[⌬] 𝗜𝗺𝗽𝗼𝗿𝘁 𝗥𝗲𝗽𝗼𝗿𝘁 [⌬]
-━━━━━━━━━━━━━━━━━━</b>
-<b>[✢] 𝗜𝗺𝗽𝗼𝗿𝘁𝗲𝗱 →</b> {imported_count}
-<b>[✢] 𝗦𝗸𝗶𝗽𝗽𝗲𝗱 (duplicates/invalid) →</b> {skipped_count}
-<b>[✢] 𝗧𝗼𝘁𝗮𝗹 𝗶𝗻 𝗗𝗕 →</b> {total_users}
-<b>[✢] 𝗧𝗶𝗺𝗲 (IST) →</b> {current_time}
-<b>━━━━━━━━━━━━━━━━━━</b>
+<b>━━━━━━━━━━━━━━━━━━━
+[⌬] 𝗜𝗠𝗣𝗢𝗥𝗧 𝗥𝗘𝗣𝗢𝗥𝗧 [⌬]
+━━━━━━━━━━━━━━━━━━━</b>
+<b>[✦] 𝐈𝐦𝐩𝐨𝐫𝐭𝐞𝐝 →</b> {imported_count}
+<b>[✢] 𝐒𝐤𝐢𝐩𝐩𝐞𝐝 →</b> {skipped_count}
+<b>[✦] 𝐓𝐨𝐭𝐚𝐥 𝐔𝐬𝐞𝐫𝐬 →</b> {total_users}
+<b>[✢] 𝐓𝐢𝐦𝐞 (𝐈𝐒𝐓) →</b> {current_time}
+<b>━━━━━━━━━━━━━━━━━━━</b>
 """
         bot.edit_message_text(
             result_text,
@@ -1260,7 +1258,7 @@ def user_stats(message):
 
     # Current India time (IST)
     india = pytz.timezone("Asia/Kolkata")
-    current_time = datetime.now(india).strftime("%Y-%m-%d %I:%M:%S %p")
+    current_time = datetime.now(india).strftime("%d-%m-%Y %I:%M:%S %p")
 
     # Stylish HTML output
     text = f"""
