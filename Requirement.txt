@@ -3,3 +3,5 @@ requests
 pycountry
 pymongo
 urllib3
+psutil
+pytzpy
